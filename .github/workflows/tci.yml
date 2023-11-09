@@ -157,19 +157,24 @@ jobs:
 
       - name: Generate HTML page
         run: |
-          echo '<html><body><pre>' > $HOME/index.html
-          cat $HOME/wcc-output/out.json >> $HOME/index.html
-          echo '</pre></body></html>' >> $HOME/index.html
-          ls -lah $HOME  # Aggiungi questo comando per elencare i file nel percorso $HOME e verificare la presenza di index.html
+          echo '<html><body><pre>' > $HOME/gh-pages/index.html
+          cat $HOME/wcc-output/out.json >> $HOME/gh-pages/index.html
+          echo '</pre></body></html>' >> $HOME/gh-pages/index.html
 
       - name: DEBUG
         run: |
-          ls -l ~/
+          ls -l ~/gh-pages/
 
       - name: Upload HTML page as artifact
         uses: actions/upload-artifact@v3
         with:
           name: weighted-code-coverage-html
-          path: ~/index.html
+          path: ~/gh-pages/index.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ~/gh-pages
 
   ###########################################################################################################################################
