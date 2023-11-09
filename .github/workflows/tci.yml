@@ -5,106 +5,103 @@ on:
     branches:
       - main
     paths:
-      - 'src/**'
-      - 'crates/**'
-      - 'fuzz/**'
-      - '.github/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
+      - "src/**"
+      - "crates/**"
+      - "fuzz/**"
+      - ".github/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
   pull_request:
     branches:
       - main
     paths:
-      - 'src/**'
-      - 'crates/**'
-      - 'fuzz/**'
-      - '.github/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
+      - "src/**"
+      - "crates/**"
+      - "fuzz/**"
+      - ".github/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
 
 jobs:
-
-################################## CODE COVERAGE LAYER ##################################
+  ################################## CODE COVERAGE LAYER ##################################
 
   code-coverage-ubuntu:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Install Rust stable
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
 
-    - name: Install grcov
-      env:
-        GRCOV_LINK: https://github.com/mozilla/grcov/releases/download
-        GRCOV_VERSION: v0.8.13
-      run: |
-        curl -L "$GRCOV_LINK/$GRCOV_VERSION/grcov-x86_64-unknown-linux-musl.tar.bz2" |
-        tar xj -C $HOME/.cargo/bin
+      - name: Install grcov
+        env:
+          GRCOV_LINK: https://github.com/mozilla/grcov/releases/download
+          GRCOV_VERSION: v0.8.13
+        run: |
+          curl -L "$GRCOV_LINK/$GRCOV_VERSION/grcov-x86_64-unknown-linux-musl.tar.bz2" |
+          tar xj -C $HOME/.cargo/bin
 
-    - name: Install llvm-tools-preview
-      run: |
-        rustup component add llvm-tools-preview
+      - name: Install llvm-tools-preview
+        run: |
+          rustup component add llvm-tools-preview
 
-    # Not necessary on a newly created image, but strictly advised
-    - name: Run cargo clean
-      run: |
-        cargo clean
+      # Not necessary on a newly created image, but strictly advised
+      - name: Run cargo clean
+        run: |
+          cargo clean
 
-    - name: Run tests
-      env:
-        RUSTFLAGS: "-Cinstrument-coverage"
-        LLVM_PROFILE_FILE: "tci-%p-%m.profraw"
-      run: |
-        cargo test --verbose
+      - name: Run tests
+        env:
+          RUSTFLAGS: "-Cinstrument-coverage"
+          LLVM_PROFILE_FILE: "tci-%p-%m.profraw"
+        run: |
+          cargo test --verbose
 
-    - name: Get coverage data for codecov
-      run: |
-        grcov . --binary-path ./target/debug/ -s . -t lcov --branch \
-              --ignore-not-existing --ignore "/*" --ignore "../*" -o lcov.info
+      - name: Get coverage data for codecov
+        run: |
+          grcov . --binary-path ./target/debug/ -s . -t lcov --branch \
+                --ignore-not-existing --ignore "/*" --ignore "../*" -o lcov.info
 
-    - name: Codecov upload
-      uses: codecov/codecov-action@v3
-      with:
-        files: lcov.info
+      - name: Codecov upload
+        uses: codecov/codecov-action@v3
+        with:
+          files: lcov.info
 
-    - name: Get total coverage
-      run: |
-        # Remove lcov.info file to avoid function duplications
-        rm -rf lcov.info
-        grcov . --binary-path ./target/debug/ -s . -t covdir --branch \
-              --token YOUR_COVDIR_TOKEN --ignore-not-existing --ignore "/*" \
-              --ignore "../*" -o covdir.json
+      - name: Get total coverage
+        run: |
+          # Remove lcov.info file to avoid function duplications
+          rm -rf lcov.info
+          grcov . --binary-path ./target/debug/ -s . -t covdir --branch \
+                --token YOUR_COVDIR_TOKEN --ignore-not-existing --ignore "/*" \
+                --ignore "../*" -o covdir.json
 
-    - name: Evaluate code coverage value
-      shell: bash
-      run: |
-        # Retrieve code coverage associated to the repository
-        FLOAT_COVERAGE=$(jq '.coveragePercent' covdir.json)
-        # Round the float value to the nearest value
-        COVERAGE_OUTPUT=$(printf "%.0f" $FLOAT_COVERAGE)
-        # If code coverage >= 80, green traffic light
-        if [ $COVERAGE_OUTPUT -ge 80 ]
-        then
-            echo "$COVERAGE_OUTPUT > 80 --> Green"
-        # If code coverage is >=60 but < 80, orange traffic light
-        elif [ $COVERAGE_OUTPUT -ge 60 ]
-        then
-            echo "60 <= $COVERAGE_OUTPUT < 80 --> Orange"
-        # Otherwise, red traffic light
-        else
-            echo "$COVERAGE_OUTPUT < 60 --> Red"
-            exit 1
-        fi
+      - name: Evaluate code coverage value
+        shell: bash
+        run: |
+          # Retrieve code coverage associated to the repository
+          FLOAT_COVERAGE=$(jq '.coveragePercent' covdir.json)
+          # Round the float value to the nearest value
+          COVERAGE_OUTPUT=$(printf "%.0f" $FLOAT_COVERAGE)
+          # If code coverage >= 80, green traffic light
+          if [ $COVERAGE_OUTPUT -ge 80 ]
+          then
+              echo "$COVERAGE_OUTPUT > 80 --> Green"
+          # If code coverage is >=60 but < 80, orange traffic light
+          elif [ $COVERAGE_OUTPUT -ge 60 ]
+          then
+              echo "60 <= $COVERAGE_OUTPUT < 80 --> Orange"
+          # Otherwise, red traffic light
+          else
+              echo "$COVERAGE_OUTPUT < 60 --> Red"
+              exit 1
+          fi
 
   ########################################### TEST WEIGHTED CODE COVERAGE WITH GITHUB PAGES #################################################
 
   weighted-code-coverage-ubuntu:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -165,10 +162,14 @@ jobs:
           echo '</pre></body></html>' >> $HOME/index.html
           ls -lah $HOME  # Aggiungi questo comando per elencare i file nel percorso $HOME e verificare la presenza di index.html
 
+      - name: DEBUG
+        run: |
+          ls -l ~/
+
       - name: Upload HTML page as artifact
         uses: actions/upload-artifact@v3
         with:
           name: weighted-code-coverage-html
-          path: $HOME/index.html
+          path: ~/index.html
 
   ###########################################################################################################################################
