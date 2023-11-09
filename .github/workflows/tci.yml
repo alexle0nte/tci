@@ -111,7 +111,7 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v3
         with:
-          enablement: false
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
