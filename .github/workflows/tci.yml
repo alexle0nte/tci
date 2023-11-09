@@ -102,7 +102,7 @@ jobs:
 
       - name: DEBUG
         run: |
-          ls -l ~/
+          ls -l .
 
       - name: Upload HTML page as artifact
         uses: actions/upload-artifact@v3
