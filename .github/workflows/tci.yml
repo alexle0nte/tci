@@ -394,68 +394,141 @@ jobs:
             exit 1
         fi
 
+  # weighted-code-coverage-ubuntu:
+
+  #   needs: [build, docs]
+
+  #   runs-on: ubuntu-latest
+
+  #   steps:
+  #   - uses: actions/checkout@v4
+
+  #   - name: Install Rust stable
+  #     uses: dtolnay/rust-toolchain@stable
+  #     with:
+  #       toolchain: stable
+
+  #   - name: Install grcov
+  #     env:
+  #       GRCOV_LINK: https://github.com/mozilla/grcov/releases/download
+  #       GRCOV_VERSION: v0.8.13
+  #       GRCOV_BINARY: grcov-x86_64-unknown-linux-musl.tar.bz2
+  #     run: |
+  #       curl -L "$GRCOV_LINK/$GRCOV_VERSION/$GRCOV_BINARY" |
+  #       tar xj -C $HOME/.cargo/bin
+
+  #   - name: Install weighted-code-coverage
+  #     env:
+  #       WCC_LINK: https://github.com/SoftengPoliTo/weighted-code-coverage/releases/download
+  #       WCC_VERSION: v0.2.0
+  #       WCC_BINARY: weighted-code-coverage-0.2.0-x86_64-unknown-linux-gnu.tar.gz
+  #     run: |
+  #       curl -L "$WCC_LINK/$WCC_VERSION/$WCC_BINARY" |
+  #       tar xz -C $HOME/.cargo/bin
+
+  #   - name: Install llvm-tools-preview
+  #     run: |
+  #       rustup component add llvm-tools-preview
+
+  #   # Not necessary on a newly created image, but strictly advised
+  #   - name: Run cargo clean
+  #     run: |
+  #       cargo clean
+
+  #   - name: Run tests
+  #     env:
+  #       RUSTFLAGS: "-Cinstrument-coverage"
+  #       LLVM_PROFILE_FILE: "tci-%p-%m.profraw"
+  #     run: |
+  #       cargo test --verbose
+
+  #   - name: Run grcov
+  #     run: |
+  #       grcov . --binary-path ./target/debug/ -t coveralls -s . --token YOUR_COVERALLS_TOKEN -o coveralls.json
+
+  #   - name: Run weighted-code-coverage
+  #     run: |
+  #       mkdir $HOME/wcc-output
+  #       weighted-code-coverage -p src/ -j coveralls.json -c cyclomatic --json $HOME/wcc-output/out.json
+
+  #   - name: Upload weighted-code-coverage data
+  #     uses: actions/upload-artifact@v3
+  #     with:
+  #       name: weighted-code-coverage-ubuntu
+  #       path: ~/wcc-output/out.json
+
+  ########################################### TEST WEIGHTED CODE COVERAGE WITH GITHUB PAGES #################################################
+
   weighted-code-coverage-ubuntu:
 
     needs: [build, docs]
-
+    
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install Rust stable
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
 
-    - name: Install grcov
-      env:
-        GRCOV_LINK: https://github.com/mozilla/grcov/releases/download
-        GRCOV_VERSION: v0.8.13
-        GRCOV_BINARY: grcov-x86_64-unknown-linux-musl.tar.bz2
-      run: |
-        curl -L "$GRCOV_LINK/$GRCOV_VERSION/$GRCOV_BINARY" |
-        tar xj -C $HOME/.cargo/bin
+      - name: Install grcov
+        env:
+          GRCOV_LINK: https://github.com/mozilla/grcov/releases/download
+          GRCOV_VERSION: v0.8.13
+          GRCOV_BINARY: grcov-x86_64-unknown-linux-musl.tar.bz2
+        run: |
+          curl -L "$GRCOV_LINK/$GRCOV_VERSION/$GRCOV_BINARY" |
+          tar xj -C $HOME/.cargo/bin
 
-    - name: Install weighted-code-coverage
-      env:
-        WCC_LINK: https://github.com/SoftengPoliTo/weighted-code-coverage/releases/download
-        WCC_VERSION: v0.2.0
-        WCC_BINARY: weighted-code-coverage-0.2.0-x86_64-unknown-linux-gnu.tar.gz
-      run: |
-        curl -L "$WCC_LINK/$WCC_VERSION/$WCC_BINARY" |
-        tar xz -C $HOME/.cargo/bin
+      - name: Install weighted-code-coverage
+        env:
+          WCC_LINK: https://github.com/SoftengPoliTo/weighted-code-coverage/releases/download
+          WCC_VERSION: v0.2.0
+          WCC_BINARY: weighted-code-coverage-0.2.0-x86_64-unknown-linux-gnu.tar.gz
+        run: |
+          curl -L "$WCC_LINK/$WCC_VERSION/$WCC_BINARY" |
+          tar xz -C $HOME/.cargo/bin
 
-    - name: Install llvm-tools-preview
-      run: |
-        rustup component add llvm-tools-preview
+      - name: Install llvm-tools-preview
+        run: |
+          rustup component add llvm-tools-preview
 
-    # Not necessary on a newly created image, but strictly advised
-    - name: Run cargo clean
-      run: |
-        cargo clean
+      - name: Run cargo clean
+        run: |
+          cargo clean
 
-    - name: Run tests
-      env:
-        RUSTFLAGS: "-Cinstrument-coverage"
-        LLVM_PROFILE_FILE: "tci-%p-%m.profraw"
-      run: |
-        cargo test --verbose
+      - name: Run tests
+        env:
+          RUSTFLAGS: "-Cinstrument-coverage"
+          LLVM_PROFILE_FILE: "ci-generate-%p-%m.profraw"
+        run: |
+          cargo test --verbose
 
-    - name: Run grcov
-      run: |
-        grcov . --binary-path ./target/debug/ -t coveralls -s . --token YOUR_COVERALLS_TOKEN -o coveralls.json
+      - name: Run grcov
+        run: |
+          grcov . --binary-path ./target/debug/ -t coveralls -s . --token YOUR_COVERALLS_TOKEN > coveralls.json
 
-    - name: Run weighted-code-coverage
-      run: |
-        mkdir $HOME/wcc-output
-        weighted-code-coverage -p src/ -j coveralls.json -c cyclomatic --json $HOME/wcc-output/out.json
+      - name: Run weighted-code-coverage
+        run: |
+          mkdir $HOME/wcc-output
+          weighted-code-coverage -p src/ -j coveralls.json -c cyclomatic --json $HOME/wcc-output/out.json
 
-    - name: Upload weighted-code-coverage data
-      uses: actions/upload-artifact@v3
-      with:
-        name: weighted-code-coverage-ubuntu
-        path: ~/wcc-output/out.json
+      - name: Generate HTML page
+        run: |
+          echo '<html><body><pre>' > $HOME/index.html
+          cat $HOME/wcc-output/out.json >> $HOME/index.html
+          echo '</pre></body></html>' >> $HOME/index.html
+
+      - name: Upload HTML page as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: weighted-code-coverage-html
+          path: $HOME/index.html
+
+  ###########################################################################################################################################
 
   weighted-code-coverage-macos:
 
