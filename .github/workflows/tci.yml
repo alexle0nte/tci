@@ -28,8 +28,6 @@ jobs:
 
   code-coverage-ubuntu:
 
-    needs: [build, docs]
-
     runs-on: ubuntu-latest
 
     steps:
