@@ -23,85 +23,13 @@ on:
       - "Cargo.lock"
 
 jobs:
-  ################################## CODE COVERAGE LAYER ##################################
-
-  code-coverage-ubuntu:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: Install grcov
-        env:
-          GRCOV_LINK: https://github.com/mozilla/grcov/releases/download
-          GRCOV_VERSION: v0.8.13
-        run: |
-          curl -L "$GRCOV_LINK/$GRCOV_VERSION/grcov-x86_64-unknown-linux-musl.tar.bz2" |
-          tar xj -C $HOME/.cargo/bin
-
-      - name: Install llvm-tools-preview
-        run: |
-          rustup component add llvm-tools-preview
-
-      # Not necessary on a newly created image, but strictly advised
-      - name: Run cargo clean
-        run: |
-          cargo clean
-
-      - name: Run tests
-        env:
-          RUSTFLAGS: "-Cinstrument-coverage"
-          LLVM_PROFILE_FILE: "tci-%p-%m.profraw"
-        run: |
-          cargo test --verbose
-
-      - name: Get coverage data for codecov
-        run: |
-          grcov . --binary-path ./target/debug/ -s . -t lcov --branch \
-                --ignore-not-existing --ignore "/*" --ignore "../*" -o lcov.info
-
-      - name: Codecov upload
-        uses: codecov/codecov-action@v3
-        with:
-          files: lcov.info
-
-      - name: Get total coverage
-        run: |
-          # Remove lcov.info file to avoid function duplications
-          rm -rf lcov.info
-          grcov . --binary-path ./target/debug/ -s . -t covdir --branch \
-                --token YOUR_COVDIR_TOKEN --ignore-not-existing --ignore "/*" \
-                --ignore "../*" -o covdir.json
-
-      - name: Evaluate code coverage value
-        shell: bash
-        run: |
-          # Retrieve code coverage associated to the repository
-          FLOAT_COVERAGE=$(jq '.coveragePercent' covdir.json)
-          # Round the float value to the nearest value
-          COVERAGE_OUTPUT=$(printf "%.0f" $FLOAT_COVERAGE)
-          # If code coverage >= 80, green traffic light
-          if [ $COVERAGE_OUTPUT -ge 80 ]
-          then
-              echo "$COVERAGE_OUTPUT > 80 --> Green"
-          # If code coverage is >=60 but < 80, orange traffic light
-          elif [ $COVERAGE_OUTPUT -ge 60 ]
-          then
-              echo "60 <= $COVERAGE_OUTPUT < 80 --> Orange"
-          # Otherwise, red traffic light
-          else
-              echo "$COVERAGE_OUTPUT < 60 --> Red"
-              exit 1
-          fi
-
-  ########################################### TEST WEIGHTED CODE COVERAGE WITH GITHUB PAGES #################################################
 
   weighted-code-coverage-ubuntu:
+
+    environment: 
+          name: github-pages
+          url: ${{steps.deployment.outputs.page_url}} 
+
     runs-on: ubuntu-latest
 
     steps:
@@ -172,10 +100,96 @@ jobs:
           name: weighted-code-coverage-html
           path: ~/index.html
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ~/ 
+          # upload entire directory
+          path: ~/
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+
+  ########################################### WEIGHTED CODE COVERAGE WITH GITHUB PAGES (peaceiris/actions-gh-pages@v3) #################################################
+
+  # weighted-code-coverage-ubuntu:
+  #   runs-on: ubuntu-latest
+
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+
+  #     - name: Install Rust stable
+  #       uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         toolchain: stable
+
+  #     - name: Install grcov
+  #       env:
+  #         GRCOV_LINK: https://github.com/mozilla/grcov/releases/download
+  #         GRCOV_VERSION: v0.8.13
+  #         GRCOV_BINARY: grcov-x86_64-unknown-linux-musl.tar.bz2
+  #       run: |
+  #         curl -L "$GRCOV_LINK/$GRCOV_VERSION/$GRCOV_BINARY" |
+  #         tar xj -C $HOME/.cargo/bin
+
+  #     - name: Install weighted-code-coverage
+  #       env:
+  #         WCC_LINK: https://github.com/SoftengPoliTo/weighted-code-coverage/releases/download
+  #         WCC_VERSION: v0.2.0
+  #         WCC_BINARY: weighted-code-coverage-0.2.0-x86_64-unknown-linux-gnu.tar.gz
+  #       run: |
+  #         curl -L "$WCC_LINK/$WCC_VERSION/$WCC_BINARY" |
+  #         tar xz -C $HOME/.cargo/bin
+
+  #     - name: Install llvm-tools-preview
+  #       run: |
+  #         rustup component add llvm-tools-preview
+
+  #     - name: Run cargo clean
+  #       run: |
+  #         cargo clean
+
+  #     - name: Run tests
+  #       env:
+  #         RUSTFLAGS: "-Cinstrument-coverage"
+  #         LLVM_PROFILE_FILE: "ci-generate-%p-%m.profraw"
+  #       run: |
+  #         cargo test --verbose
+
+  #     - name: Run grcov
+  #       run: |
+  #         grcov . --binary-path ./target/debug/ -t coveralls -s . --token YOUR_COVERALLS_TOKEN > coveralls.json
+
+  #     - name: Run weighted-code-coverage
+  #       run: |
+  #         mkdir $HOME/wcc-output
+  #         weighted-code-coverage -p src/ -j coveralls.json -c cyclomatic --json $HOME/wcc-output/out.json
+
+  #     - name: Generate HTML page
+  #       run: |
+  #         echo '<html><body><pre>' > $HOME/index.html
+  #         cat $HOME/wcc-output/out.json >> $HOME/index.html
+  #         echo '</pre></body></html>' >> $HOME/index.html
+  #         ls -lah $HOME  # Aggiungi questo comando per elencare i file nel percorso $HOME e verificare la presenza di index.html
+
+  #     - name: DEBUG
+  #       run: |
+  #         ls -l ~/
+
+  #     - name: Upload HTML page as artifact
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: weighted-code-coverage-html
+  #         path: ~/index.html
+
+  #     - name: Deploy to GitHub Pages
+  #       uses: peaceiris/actions-gh-pages@v3
+  #       with:
+  #         github_token: ${{ secrets.GITHUB_TOKEN }}
+  #         publish_dir: ~/ 
 
   ###########################################################################################################################################
